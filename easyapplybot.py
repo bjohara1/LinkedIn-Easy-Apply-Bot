@@ -137,6 +137,17 @@ class EasyApplyBot:
         else:
             df = pd.DataFrame(columns=["Question", "Answer"])
             df.to_csv(self.qa_file, index=False, encoding='utf-8')
+        
+        # Load custom answers from YAML file
+        self.user_answers = []
+        try:
+            with open("questions.yaml", 'r') as stream:
+                self.user_answers = yaml.safe_load(stream)
+            log.info("Loaded custom answers from questions.yaml")
+        except FileNotFoundError:
+            log.info("questions.yaml not found, will use default answering logic.")
+        except yaml.YAMLError as exc:
+            log.error(f"Error parsing questions.yaml: {exc}")
 
 
     def get_appliedIDs(self, filename) -> list | None:
@@ -177,26 +188,66 @@ class EasyApplyBot:
         log.info("Logging in.....Please wait :)  ")
         self.browser.get("https://www.linkedin.com/login?trk=guest_homepage-basic_nav-header-signin")
         try:
+            # Wait for page to load
+            time.sleep(3)
+            
+            # Find username field
             user_field = self.browser.find_element("id","username")
-            pw_field = self.browser.find_element("id","password")
-            login_button = self.browser.find_element("xpath",
-                        '//*[@id="organic-div"]/form/div[3]/button')
             user_field.send_keys(username)
             user_field.send_keys(Keys.TAB)
             time.sleep(2)
+            
+            # Find password field
+            pw_field = self.browser.find_element("id","password")
             pw_field.send_keys(password)
             time.sleep(2)
-            login_button.click()
+            
+            # Try multiple possible login button selectors
+            login_button = None
+            possible_selectors = [
+                '//*[@id="organic-div"]/form/div[3]/button',
+                '//button[@type="submit"]',
+                '//button[contains(text(), "Sign in")]',
+                '//button[contains(text(), "Sign")]',
+                '//input[@type="submit"]'
+            ]
+            
+            for selector in possible_selectors:
+                try:
+                    login_button = self.browser.find_element("xpath", selector)
+                    if login_button:
+                        log.info(f"Found login button with selector: {selector}")
+                        break
+                except:
+                    continue
+            
+            if login_button:
+                login_button.click()
+                log.info("Login button clicked successfully")
+            else:
+                # If no button found, try pressing Enter
+                pw_field.send_keys(Keys.RETURN)
+                log.info("No login button found, pressed Enter instead")
+            
             time.sleep(15)
-            # if self.is_present(self.locator["2fa_oneClick"]):
-            #     oneclick_auth = self.browser.find_element(by='id', value='reset-password-submit-button')
-            #     if oneclick_auth is not None:
-            #         log.info("additional authentication required, sleep for 15 seconds so you can do that")
-            #         time.sleep(15)
-            # else:
-            #     time.sleep()
+            
+            # Check if we need to handle 2FA or other authentication
+            if "checkpoint" in self.browser.current_url or "challenge" in self.browser.current_url:
+                log.info("Additional authentication required. Please complete manually.")
+                log.info("You have 60 seconds to complete authentication...")
+                time.sleep(60)
+            
+            # Check if login was successful
+            if "feed" in self.browser.current_url or "mynetwork" in self.browser.current_url:
+                log.info("Successfully logged into LinkedIn!")
+            else:
+                log.info("Login may have failed. Current URL: " + self.browser.current_url)
+                
         except TimeoutException:
             log.info("TimeoutException! Username/password field or login button not found")
+        except Exception as e:
+            log.info(f"Login error: {str(e)}")
+            log.info("Please check your credentials and try again.")
 
     def fill_data(self) -> None:
         self.browser.set_window_size(1, 1)
@@ -274,12 +325,16 @@ class EasyApplyBot:
                     for link in links:
                             if 'Applied' not in link.text: #checking if applied already
                                 if link.text not in self.blacklist: #checking if blacklisted
-                                    jobID = link.get_attribute("data-job-id")
-                                    if jobID == "search":
-                                        log.debug("Job ID not found, search keyword found instead? {}".format(link.text))
-                                        continue
+                                    job_title = link.text.splitlines()[0] if link.text else ""
+                                    if any(p.lower() in job_title.lower() for p in self.positions):
+                                        jobID = link.get_attribute("data-job-id")
+                                        if jobID == "search":
+                                            log.debug("Job ID not found, search keyword found instead? {}".format(link.text))
+                                            continue
+                                        else:
+                                            jobIDs[jobID] = "To be processed"
                                     else:
-                                        jobIDs[jobID] = "To be processed"
+                                        log.info(f"Skipping irrelevant job: '{job_title}'")
                     if len(jobIDs) > 0:
                         self.apply_loop(jobIDs)
                     self.browser, jobs_per_page = self.next_jobs_page(position,
@@ -320,7 +375,7 @@ class EasyApplyBot:
 
         # word filter to skip positions not wanted
         if button is not False:
-            if any(word in self.browser.title for word in blackListTitles):
+            if any(word in self.browser.title for word in self.blackListTitles):
                 log.info('skipping this application, a blacklisted keyword was found in the job position')
                 string_easy = "* Contains blacklisted keyword"
                 result = False
@@ -537,103 +592,83 @@ class EasyApplyBot:
         return submitted
     def process_questions(self):
         time.sleep(1)
-        form = self.get_elements("fields") #self.browser.find_elements(By.CLASS_NAME, "jobs-easy-apply-form-section__grouping")
-        for field in form:
-            question = field.text
-            answer = self.ans_question(question.lower())
-            #radio button
-            if self.is_present(self.locator["radio_select"]):
-                try:
-                    input = field.find_element(By.CSS_SELECTOR, "input[type='radio'][value={}]".format(answer))
-                    input.execute_script("arguments[0].click();", input)
-                except Exception as e:
-                    log.error(e)
-                    continue
-            #multi select
-            elif self.is_present(self.locator["multi_select"]):
-                try:
-                    input = field.find_element(self.locator["multi_select"])
-                    input.send_keys(answer)
-                except Exception as e:
-                    log.error(e)
-                    continue
-            # text box
-            elif self.is_present(self.locator["text_select"]):
-                try:
-                    input = field.find_element(self.locator["text_select"])
-                    input.send_keys(answer)
-                except Exception as e:
-                    log.error(e)
+        form_sections = self.get_elements("fields")
+        for section in form_sections:
+            question = section.text
+            answer = self.ans_question(question)
+
+            if not answer:
+                log.warning(f"No answer found for question: '{question}'. Pausing for manual input.")
+                time.sleep(30)
+                continue
+            
+            log.info(f"Answering question '{question}' with '{answer}'")
+
+            try:
+                # Type 1: Dropdowns
+                dropdown_trigger = section.find_elements(By.CSS_SELECTOR, "button[aria-haspopup='listbox']")
+                if dropdown_trigger:
+                    dropdown_trigger[0].click()
+                    time.sleep(1)
+                    
+                    option_xpath = f"//li[contains(@class, 'artdeco-dropdown__item')][contains(normalize-space(), '{answer}')]"
+                    option = self.wait.until(EC.element_to_be_clickable((By.XPATH, option_xpath)))
+                    option.click()
                     continue
 
-            elif self.is_present(self.locator["text_select"]):
-               pass
+                # Type 2: Radio Buttons
+                radio_buttons = section.find_elements(By.CSS_SELECTOR, "input[type='radio']")
+                if radio_buttons:
+                    for radio in radio_buttons:
+                        label = radio.find_element(By.XPATH, "./following-sibling::label")
+                        if answer.lower() in label.text.lower():
+                            radio.click()
+                            break
+                    continue
 
-            if "Yes" or "No" in answer: #radio button
-                try: #debug this
-                    input = form.find_element(By.CSS_SELECTOR, "input[type='radio'][value={}]".format(answer))
-                    form.execute_script("arguments[0].click();", input)
-                except:
-                    pass
+                # Type 3: Text Inputs
+                text_inputs = section.find_elements(By.CSS_SELECTOR, "input[type='text']")
+                if text_inputs:
+                    text_inputs[0].clear()
+                    text_inputs[0].send_keys(answer)
+                    continue
+                
+                # Type 4: Text Areas
+                text_areas = section.find_elements(By.TAG_NAME, 'textarea')
+                if text_areas:
+                    text_areas[0].clear()
+                    text_areas[0].send_keys(answer)
+                    continue
+
+            except Exception as e:
+                log.error(f"Error answering question '{question}': {e}")
 
 
-            else:
-                input = form.find_element(By.CLASS_NAME, "artdeco-text-input--input")
-                input.send_keys(answer)
+    def ans_question(self, question):
+        question_lower = question.lower()
 
-    def ans_question(self, question): #refactor this to an ans.yaml file
-        answer = None
-        if "how many" in question:
-            answer = "1"
-        elif "experience" in question:
-            answer = "1"
-        elif "sponsor" in question:
-            answer = "No"
-        elif 'do you ' in question:
-            answer = "Yes"
-        elif "have you " in question:
-            answer = "Yes"
-        elif "US citizen" in question:
-            answer = "Yes"
-        elif "are you " in question:
-            answer = "Yes"
-        elif "salary" in question:
-            answer = self.salary
-        elif "can you" in question:
-            answer = "Yes"
-        elif "gender" in question:
-            answer = "Male"
-        elif "race" in question:
-            answer = "Wish not to answer"
-        elif "lgbtq" in question:
-            answer = "Wish not to answer"
-        elif "ethnicity" in question:
-            answer = "Wish not to answer"
-        elif "nationality" in question:
-            answer = "Wish not to answer"
-        elif "government" in question:
-            answer = "I do not wish to self-identify"
-        elif "are you legally" in question:
-            answer = "Yes"
-        else:
-            log.info("Not able to answer question automatically. Please provide answer")
-            #open file and document unanswerable questions, appending to it
-            answer = "user provided"
-            time.sleep(15)
+        # 1. Check custom answers from questions.yaml
+        if self.user_answers:
+            for qa_pair in self.user_answers:
+                if 'keywords' not in qa_pair or 'answer' not in qa_pair:
+                    continue
+                
+                # Use any() to match if any keyword is in the question
+                if any(keyword.lower() in question_lower for keyword in qa_pair['keywords']):
+                    answer = qa_pair['answer']
+                    log.info(f"Found keywords '{qa_pair['keywords']}' for question '{question}'. Answering with: '{answer}'")
+                    self.answers[question] = answer
+                    return answer
 
-            # df = pd.DataFrame(self.answers, index=[0])
-            # df.to_csv(self.qa_file, encoding="utf-8")
-        log.info("Answering question: " + question + " with answer: " + answer)
+        # 2. Fallback to salary from config
+        if "salary" in question_lower or "compensation" in question_lower:
+            return self.salary
 
-        # Append question and answer to the CSV
-        if question not in self.answers:
-            self.answers[question] = answer
-            # Append a new question-answer pair to the CSV file
-            new_data = pd.DataFrame({"Question": [question], "Answer": [answer]})
-            new_data.to_csv(self.qa_file, mode='a', header=False, index=False, encoding='utf-8')
-            log.info(f"Appended to QA file: '{question}' with answer: '{answer}'.")
-
-        return answer
+        # 3. If no answer found, pause for manual input
+        log.info(f"Question not found in custom answers: '{question}'")
+        log.info("Please answer manually in the browser. Pausing for 30 seconds.")
+        time.sleep(30)
+        return None
 
     def load_page(self, sleep=1):
         scroll_page = 0

@@ -1,4 +1,3 @@
-
 # Created by https://www.toptal.com/developers/gitignore/api/python
 # Edit at https://www.toptal.com/developers/gitignore?templates=python
 
@@ -148,3 +147,8 @@ venv8/
 quickstart.py
 states.json
 logs
+
+# Configuration files with sensitive data
+config.yaml
+qa.csv
+questions.yaml
