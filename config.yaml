@@ -1,37 +1,43 @@
-username: <username>
-password: <password>
-phone_number: <phone_number>
+username: backupbackup7489@gmail.com
+password: YAnkees!
+# k"m~z5+6~X-F.R8
+phone_number: 2527254652
 
 profile_path: '' #can be empty, will default to 'C:\Users\<user>\AppData\Local\Google\Chrome\User Data\Default'
 
-
 positions:
-- Software Engineer
+- Data
+- Analytics
 
+# Add more positions you want to search for
 
 locations:
-- Michigan
 - Remote
+- Raleigh, NC
+- Durham, NC
+# Add more locations you want to search in
 
-salary: 60,000
-rate: 25
+salary: 100000-250000
+rate: 50
+
 # --------- Optional Parameters -------
 uploads:
-  Resume: /Users/steven/Desktop/LinkedIn-Easy-Apply-Bot/cv.pdf
-  Cover Letter: /Users/steven/Desktop/LinkedIn-Easy-Apply-Bot/cl.pdf
-  #Photo: # PATH TO photo
-
+  Resume: /Users/bradohara/Desktop/LinkedIn-Easy-Apply-Bot/cv.pdf
+  Cover Letter: /Users/bradohara/Desktop/LinkedIn-Easy-Apply-Bot/cl.pdf
+  #Photo: # PATH TO photo (optional)
 
 output_filename:
-- /Users/steven/Desktop/LinkedIn-Easy-Apply-Bot/out.csv
+- /Users/bradohara/Desktop/LinkedIn-Easy-Apply-Bot/out.csv
 
 # blacklist:
-# - # Company names you want to ignore
+# - Company names you want to ignore
+# - Example: - Google
+# - Example: - Facebook
 
 experience_level:
   # - 1 # Entry level
-  # - 2 # Associate
-  # - 3 # Mid-Senior level
-  # - 4 # Director
+  - 2 # Associate
+  - 3 # Mid-Senior level
+  - 4 # Director
   # - 5 # Executive
   # - 6 # Internship
