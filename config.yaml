@@ -1,7 +1,7 @@
-username: backupbackup7489@gmail.com
-password: YAnkees!
+username: [placeholder]
+password: [placeholder]
 # k"m~z5+6~X-F.R8
-phone_number: 2527254652
+phone_number: [placeholder]
 
 profile_path: '' #can be empty, will default to 'C:\Users\<user>\AppData\Local\Google\Chrome\User Data\Default'
 
@@ -13,8 +13,7 @@ positions:
 
 locations:
 - Remote
-- Raleigh, NC
-- Durham, NC
+
 # Add more locations you want to search in
 
 salary: 100000-250000
@@ -22,13 +21,12 @@ rate: 50
 
 # --------- Optional Parameters -------
 uploads:
-  Resume: /Users/bradohara/Desktop/LinkedIn-Easy-Apply-Bot/cv.pdf
-  Cover Letter: /Users/bradohara/Desktop/LinkedIn-Easy-Apply-Bot/cl.pdf
+  Resume: [placeholder]
+  Cover Letter: [placeholder]
   #Photo: # PATH TO photo (optional)
 
 output_filename:
-- /Users/bradohara/Desktop/LinkedIn-Easy-Apply-Bot/out.csv
-
+[placeholder]
 # blacklist:
 # - Company names you want to ignore
 # - Example: - Google
