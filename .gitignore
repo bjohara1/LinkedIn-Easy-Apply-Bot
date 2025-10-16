@@ -143,12 +143,26 @@ dmypy.json
 # User files
 output.csv
 output*.csv
+out.csv
 venv8/
 quickstart.py
 states.json
 logs
 
+# System files
+.DS_Store
+
 # Configuration files with sensitive data
 config.yaml
 qa.csv
 questions.yaml
+unanswered_questions.yaml
+
+# Personal documents
+cv.pdf
+cl.pdf
+*.pdf
+
+# Extension packages (optional - keep if you want to track releases)
+# linkedin-easy-apply-extension.zip
+# linkedin-easy-apply-extension-v*.zip
